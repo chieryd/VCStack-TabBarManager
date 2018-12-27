@@ -11,7 +11,9 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface HDTabBarItemInfo : NSObject
-
+@property (nonatomic, strong) NSString *title;
+@property (nonatomic, strong) UIImage *itemImage;
+- (instancetype)initWithTitle:(NSString *)title itemImage:(UIImage *)itemImage;
 @end
 
 NS_ASSUME_NONNULL_END

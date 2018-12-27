@@ -7,11 +7,12 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "HDVCStackAnimationProtocol.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface HDVCStackAnimation : NSObject
-
+@interface HDVCStackAnimation : NSObject <HDVCStackAnimationProtocol>
++ (instancetype)defaultAnimation;
 @end
 
 NS_ASSUME_NONNULL_END

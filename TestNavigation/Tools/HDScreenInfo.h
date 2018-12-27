@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (CGFloat)height;
 + (CGFloat)statusBarHeight;
 + (CGFloat)navigationBarHeight;
++ (CGFloat)tabBarHeight;
 @end
 
 NS_ASSUME_NONNULL_END

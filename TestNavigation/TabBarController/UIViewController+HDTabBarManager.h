@@ -7,10 +7,16 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "HDTabBarManager.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface UIViewController (HDTabBarManager)
+
+/**
+ VC对当前tabBarManager的快捷访问
+ */
+@property (nonatomic, strong, nullable) HDTabBarManager *tabBarManager;
 
 @end
 

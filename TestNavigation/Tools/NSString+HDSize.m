@@ -9,5 +9,10 @@
 #import "NSString+HDSize.h"
 
 @implementation NSString (HDSize)
-
+- (CGSize)sizeWithFont:(UIFont *)font andBoundSize:(CGSize)size {
+    return [self boundingRectWithSize:size
+                              options:NSStringDrawingUsesLineFragmentOrigin
+                           attributes:@{NSFontAttributeName:font}
+                              context:nil].size;
+}
 @end

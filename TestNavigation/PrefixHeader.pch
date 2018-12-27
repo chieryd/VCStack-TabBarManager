@@ -13,3 +13,14 @@
 // You will also need to set the Prefix Header build setting of one or more of your targets to reference this file.
 
 #endif /* PrefixHeader_pch */
+
+#import "UIViewController+HDVCStack.h"
+#import "HDVCStack.h"
+#import "HDVCStackPanProtocol.h"
+#import "HDVCStackAnimation.h"
+#import "UIViewController+NavigationBar.h"
+#import "HDScreenInfo.h"
+#import "NSString+HDSize.h"
+#import "UIViewController+HDHideBottomBarWhenPushed.h"
+#import "HDWeakWrapper.h"
+#import "HDModelAnimation.h"

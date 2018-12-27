@@ -7,6 +7,9 @@
 //
 
 #import "AppDelegate.h"
+#import "HDVCStack.h"
+#import "HDRootViewController.h"
+#import "HDTabBarManager.h"
 
 @interface AppDelegate ()
 
@@ -17,6 +20,33 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     // Override point for customization after application launch.
+    
+    self.window = [[UIWindow alloc] initWithFrame:[UIScreen.mainScreen bounds]];
+    self.window.backgroundColor = [UIColor whiteColor];
+    
+    HDRootViewController *rootViewController = [[HDRootViewController alloc] init];
+    HDVCStack *vcStack = [[HDVCStack alloc] initWithRootViewController:rootViewController andVCStackIdentifier:@"111"];
+    
+    HDRootViewController *rootViewController2 = [[HDRootViewController alloc] init];
+    HDVCStack *vcStack2 = [[HDVCStack alloc] initWithRootViewController:rootViewController2 andVCStackIdentifier:@"222"];
+    
+    HDTabBarItemInfo *info1 = [[HDTabBarItemInfo alloc] initWithTitle:@"项目1" itemImage:[UIImage imageNamed:@"HomeIcon"]];
+    HDTabBarItemInfo *info2 = [[HDTabBarItemInfo alloc] initWithTitle:@"项目2" itemImage:[UIImage imageNamed:@"PersonIcon"]];
+    
+    HDTabBarView *tabBarView = [[HDTabBarView alloc] initWithItems:@[info1, info2]
+                                                          andFrame:CGRectMake(0,
+                                                                              HDScreenInfo.height - HDScreenInfo.tabBarHeight,
+                                                                              HDScreenInfo.width,
+                                                                              HDScreenInfo.tabBarHeight)];
+    tabBarView.backgroundColor = [UIColor whiteColor];
+    
+    HDTabBarManager *tabBarManager = [[HDTabBarManager alloc] init];
+    tabBarManager.viewControllers = @[vcStack, vcStack2];
+    tabBarManager.tabBarView = tabBarView;
+    
+    self.window.rootViewController = tabBarManager;
+    [self.window makeKeyAndVisible];
+    
     return YES;
 }
 

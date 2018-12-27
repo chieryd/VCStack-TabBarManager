@@ -7,6 +7,9 @@
 //
 
 #import "HDRootViewController.h"
+#import "HDSubViewController.h"
+#import "HDVCStack.h"
+#import "HDVCStackAnimation.h"
 
 @interface HDRootViewController ()
 
@@ -16,17 +19,38 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // Do any additional setup after loading the view.
+    self.view.backgroundColor = [UIColor blueColor];
+    
+    
+    UIButton *button = [[UIButton alloc] initWithFrame:CGRectMake(100, 100, 100, 100)];
+    [button setTitle:@"点击跳转" forState:UIControlStateNormal];
+    button.backgroundColor = [UIColor redColor];
+    [button addTarget:self action:@selector(clickButton) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:button];
+    
+    self.hidesBottomBarWhenPushed = YES;
 }
 
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
+- (void)clickButton {
+    HDSubViewController *vc = [[HDSubViewController alloc] init];
+    [self.vcStack pushto:vc animation:[HDVCStackAnimation defaultAnimation]];
 }
-*/
+
+// 测试生命周期
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+}
+
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+}
 
 @end

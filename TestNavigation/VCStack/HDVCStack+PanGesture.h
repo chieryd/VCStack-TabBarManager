@@ -10,8 +10,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef void(^HDVCStackPanGestureBlock) (void);
 @interface HDVCStack (PanGesture)
+@property (nonatomic, strong) UIView *maskView;
+@property (nonatomic, copy, nullable) HDVCStackPanGestureBlock successBlock;
 
+// 手势操作
+- (void)pangestureWithView:(UIView *)view completeHandle:(void(^)(void))completeHandle;
 @end
 
 NS_ASSUME_NONNULL_END

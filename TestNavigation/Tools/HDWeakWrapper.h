@@ -11,6 +11,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface HDWeakWrapper : NSObject
+@property (nonatomic, weak) id objc;
 
 @end
 

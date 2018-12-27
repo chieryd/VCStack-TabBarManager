@@ -9,5 +9,11 @@
 #import "HDTabBarItemInfo.h"
 
 @implementation HDTabBarItemInfo
-
+- (instancetype)initWithTitle:(NSString *)title itemImage:(UIImage *)itemImage {
+    if (self = [super init]) {
+        self.title = title;
+        self.itemImage = itemImage;
+    }
+    return self;
+}
 @end

@@ -8,196 +8,59 @@
 
 #import "HDVCStack.h"
 #import "HDRootViewController.h"
-
-@interface HDScreenInfo: NSObject
-+ (CGFloat)width;
-+ (CGFloat)height;
-@end
-
-@implementation HDScreenInfo
-+ (CGFloat)width {
-    return UIScreen.mainScreen.bounds.size.width;
-}
-
-+ (CGFloat)height {
-    return UIScreen.mainScreen.bounds.size.height;
-}
-@end
-
-@implementation HDVCStackAnimation
-+ (instancetype)defaultAnimation {
-    return [HDVCStackAnimation new];
-}
-
-- (void)pushWithWillShowVC:(UIViewController *)willShowVC
-                 currentVC:(UIViewController *)currentVC
-                completion:(void (^)(BOOL))completion {
-    // 动画开始前的UI效果
-    willShowVC.view.frame = CGRectMake(HDScreenInfo.width, 0, HDScreenInfo.width, HDScreenInfo.height);
-    [UIView animateWithDuration:0.34 animations:^{
-        willShowVC.view.frame = CGRectMake(HDScreenInfo.width / 3.0, 0, HDScreenInfo.width, HDScreenInfo.height);
-        currentVC.view.frame = CGRectMake(- HDScreenInfo.width / 3.0, 0, HDScreenInfo.width, HDScreenInfo.height);
-    } completion:^(BOOL finished) {
-        if (finished) {
-            /* 将对应View的frame还原
-             保持和无动画的逻辑对应
-             同时保证在UI调试时的正确性
-             */
-            willShowVC.view.frame = CGRectMake(0, 0, HDScreenInfo.width, HDScreenInfo.height);
-            currentVC.view.frame = CGRectMake(0, 0, HDScreenInfo.width, HDScreenInfo.height);
-        }
-        completion(finished);
-    }];
-}
-
-- (void)popWithWillShowVC:(UIViewController *)willShowVC
-                currentVC:(UIViewController *)currentVC
-               completion:(void (^)(BOOL))completion {
-    // 动画开始前的UI效果
-    willShowVC.view.frame = CGRectMake(- HDScreenInfo.width / 3.0, 0, HDScreenInfo.width, HDScreenInfo.height);
-    currentVC.view.frame = CGRectMake(HDScreenInfo.width / 3.0, 0, HDScreenInfo.width, HDScreenInfo.height);
-    [UIView animateWithDuration:0.34 animations:^{
-        willShowVC.view.frame = CGRectMake(0, 0, HDScreenInfo.width, HDScreenInfo.height);
-        currentVC.view.frame = CGRectMake(HDScreenInfo.width, 0, HDScreenInfo.width, HDScreenInfo.height);
-    } completion:^(BOOL finished) {
-        completion(finished);
-    }];
-}
-
-@end
-
-typedef void(^HDViewPanGestureBlock) (void);
-@interface HDViewPanGesture : NSObject
-@property (nonatomic, copy) HDViewPanGestureBlock successBlock;
-+ (instancetype)shareInstance;
-- (void)pangestureWithView:(UIView *)view completeHandle:(void(^)(void))completeHandle;
-@end
-
-@implementation HDViewPanGesture
-
-+ (instancetype)shareInstance {
-    static dispatch_once_t onceToken;
-    static HDViewPanGesture *__instance;
-    dispatch_once(&onceToken, ^{
-        __instance = [HDViewPanGesture new];
-    });
-    return __instance;
-}
-
-- (void)pangestureWithView:(UIView *)view completeHandle:(void (^)(void))completeHandle {
-    UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
-    self.successBlock = completeHandle;
-    [view addGestureRecognizer:panGesture];
-}
-
-- (void)pan:(UIPanGestureRecognizer *)pan {
-    // 当前正在拖动的view
-    UIView *view = pan.view;
-    // 即将要显示的View
-    if (HDVCStack.shareInstance.vcArray.count > 1) {
-        UIViewController *bottomViewController = HDVCStack.shareInstance.vcArray[HDVCStack.shareInstance.vcArray.count - 2];
-        UIView *bottomView = bottomViewController.view;
-        
-        // 一些标记值
-        static CGPoint startViewCenter;
-        static CGPoint startBottomViewCenter;
-        BOOL continueFlag = YES;
-        
-        if (view && bottomView) {
-            // 拖动开始的检测
-            if (pan.state == UIGestureRecognizerStateBegan) {
-                // 拖动开始时View的frame需要先发生变化，保证和系统的UI风格统一
-                bottomView.frame = CGRectMake(- HDScreenInfo.width / 3.0, 0, HDScreenInfo.width, HDScreenInfo.height);
-                view.frame = CGRectMake(HDScreenInfo.width / 3.0, 0, HDScreenInfo.width, HDScreenInfo.height);
-                // 检测当前的拖动的位置是否在合适的点，当前确立，view的左边1/3z位置可以作为触发的初始点
-                CGPoint startPoint = [pan locationInView:view];
-                if (startPoint.x > (view.frame.size.height / 4.0)) {
-                    continueFlag = NO;
-                }
-                startViewCenter = view.center;
-                startBottomViewCenter = bottomView.center;
-            }
-            else if (pan.state == UIGestureRecognizerStateChanged) {
-                // 拿到对一个的偏移量
-                CGPoint transition = [pan translationInView:view];
-                view.center = CGPointMake(startViewCenter.x + transition.x / 3.0 * 2.0, startViewCenter.y);
-                bottomView.center = CGPointMake(startBottomViewCenter.x + transition.x / 3.0, startBottomViewCenter.y);
-            }
-            else if (pan.state == UIGestureRecognizerStateEnded) {
-                // 开始收尾动画
-                if (view.center.x > (view.frame.size.width / 6.0 * 7.0)) {
-                    if (self.successBlock) {
-                        self.successBlock();
-                    }
-                }
-                else {
-                    // 禁止用户操作
-                    [[UIApplication sharedApplication] beginIgnoringInteractionEvents];
-                    // 还原到初始的位置
-                    [UIView animateWithDuration:0.34 animations:^{
-                        view.frame = CGRectMake(HDScreenInfo.width / 3.0, 0, HDScreenInfo.width, HDScreenInfo.height);
-                        bottomView.frame = CGRectMake(- HDScreenInfo.width / 3.0, 0, HDScreenInfo.width, HDScreenInfo.height);
-                    } completion:^(BOOL finished) {
-                        if (finished) {
-                            // 解开用户手势操作
-                            [[UIApplication sharedApplication] endIgnoringInteractionEvents];
-                            // 还原对象的位置
-                            view.frame = CGRectMake(0, 0, HDScreenInfo.width, HDScreenInfo.height);
-                            bottomView.frame = CGRectMake(0, 0, HDScreenInfo.width, HDScreenInfo.height);
-                        }
-                    }];
-                }
-            }
-        }
-    }
-}
-@end
+#import "HDScreenInfo.h"
+#import "HDVCStackPanProtocol.h"
+#import "HDVCStack+PanGesture.h"
+#import "HDTabBarManager.h"
 
 @interface HDVCStack ()
-@property (nonatomic, readwrite, strong) NSMutableArray *vcArray;
-@property (nonatomic, readwrite, strong) UIViewController *visibleVC;
+@property (nonatomic, readwrite, strong) NSMutableArray *viewControllers;
+@property (nonatomic, readwrite, strong) UIViewController *visibleViewController;
 @property (nonatomic, readwrite, strong) UIViewController *rootViewController;
-
-@property (nonatomic, strong) HDViewPanGesture *temp;
+@property (nonatomic, readwrite, strong) NSString *identifier;
 @end
 
 @implementation HDVCStack
 
-+ (instancetype)shareInstance {
-    static dispatch_once_t onceToken;
-    static HDVCStack *__instance = nil;
-    dispatch_once(&onceToken, ^{
-        __instance = [[HDVCStack alloc] init];
-    });
-    return __instance;
+- (instancetype)initWithRootViewController:(UIViewController *)viewController {
+    return [self initWithRootViewController:viewController andVCStackIdentifier:nil];
 }
 
-- (NSMutableArray *)vcArray {
-    if (!_vcArray) {
-        _vcArray = [NSMutableArray new];
+- (instancetype)initWithRootViewController:(UIViewController *)viewController
+              andVCStackIdentifier:(NSString *)identifier {
+    if (self = [super init]) {
+        _rootViewController = viewController;
+        _identifier = identifier;
+        self.visibleViewController = _rootViewController;
+        viewController.vcStack = self;
+        [self.viewControllers addObject:viewController];
     }
-    return _vcArray;
+    return self;
 }
 
-- (UIViewController *)rootViewController {
-    if (!_rootViewController) {
-        _rootViewController = [[HDRootViewController alloc] init];
-        self.visibleVC = _rootViewController;
-        [self.vcArray addObject:_rootViewController];
+- (NSMutableArray *)viewControllers {
+    if (!_viewControllers) {
+        _viewControllers = [NSMutableArray new];
     }
-    return _rootViewController;
+    return _viewControllers;
 }
 
-+ (void)pushto:(UIViewController *)vc animation:(NSObject<HDVCStackAnimationFunctions> *)animation {
-    CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
-    CGFloat screenHeight = UIScreen.mainScreen.bounds.size.height;
+// 模拟左滑手势的处理，如果用户实现了协议，且标明不使用左滑手势，则不增加手势选项，否则默认是增加的
+- (void)panGestureWithView:(UIViewController *)vc {
+    if ([vc conformsToProtocol:@protocol(HDVCEnableDragBackProtocol)] &&
+        [vc respondsToSelector:@selector(enableDrag)] &&
+        [(UIViewController <HDVCEnableDragBackProtocol> *)vc enableDrag] == NO) {
+        // 这里什么都不做
+        return;
+    }
     // 添加拖动手势的操作
-    [[HDViewPanGesture shareInstance] pangestureWithView:vc.view completeHandle:^() {
-        if ([HDVCStack.shareInstance.vcArray count] > 1) {
+    
+    [self pangestureWithView:vc.view completeHandle:^() {
+        if ([self.viewControllers count] > 1) {
             // 底部的vc
-            UIViewController *bottomVC = HDVCStack.shareInstance.vcArray[HDVCStack.shareInstance.vcArray.count - 2];
+            UIViewController *bottomVC = self.viewControllers[self.viewControllers.count - 2];
             // 当前显示的vc
-            UIViewController *currentVC = HDVCStack.shareInstance.visibleVC;
+            UIViewController *currentVC = self.visibleViewController;
             
             if (bottomVC && currentVC) {
                 // 当前禁止任何手势
@@ -205,44 +68,51 @@ typedef void(^HDViewPanGestureBlock) (void);
                 
                 [bottomVC viewWillAppear:true];
                 [currentVC viewWillDisappear:true];
-                [currentVC viewDidAppear:true];
                 [UIView animateWithDuration:0.34 animations:^{
-                    currentVC.view.frame = CGRectMake(screenWidth, 0, screenWidth, screenHeight);
-                    bottomVC.view.frame = CGRectMake(0, 0, screenWidth, screenHeight);
+                    currentVC.view.frame = CGRectMake(HDScreenInfo.width, 0, HDScreenInfo.width, HDScreenInfo.height);
+                    bottomVC.view.frame = CGRectMake(0, 0, HDScreenInfo.width, HDScreenInfo.height);
                 } completion:^(BOOL finished) {
                     if (finished) {
-                        [currentVC viewDidDisappear:true];
                         [currentVC.view removeFromSuperview];
-                        HDVCStack.shareInstance.visibleVC = bottomVC;
-                        [[[HDVCStack shareInstance] vcArray] removeLastObject];
+                        [currentVC viewDidDisappear:true];
+                        currentVC.vcStack = nil;
+                        [bottomVC viewDidAppear:true];
+                        self.visibleViewController = bottomVC;
+                        [[self viewControllers] removeLastObject];
                         // 手势禁用关闭
                         [[UIApplication sharedApplication] endIgnoringInteractionEvents];
                     }
                 }];
             }
-            
         }
-        [UIView animateWithDuration:0.34 animations:^{
-            vc.view.frame = CGRectMake(screenWidth, 0, screenWidth, screenHeight);
-            
-        } completion:^(BOOL finished) {
-            
-        }];
     }];
+}
+
+- (void)pushto:(UIViewController *)vc animation:(NSObject<HDVCStackAnimationProtocol> *)animation {
+    // 添加手势处理
+    [self panGestureWithView:vc];
+    
     // 当前禁止任何手势
     [[UIApplication sharedApplication] beginIgnoringInteractionEvents];
-    [HDVCStack.shareInstance.vcArray addObject:vc];
+    [self.viewControllers addObject:vc];
     [vc viewWillAppear:false];
-    [HDVCStack.shareInstance.visibleVC viewWillDisappear:false];
-    [HDVCStack.shareInstance.visibleVC.view addSubview:vc.view];
-    [HDVCStack.shareInstance.visibleVC viewDidDisappear:false];
-    [vc viewDidAppear:false];
+    [self.visibleViewController viewWillDisappear:false];
+    [self.visibleViewController.view addSubview:vc.view];
+    vc.vcStack = self;
+
+    // 对底部的tabBar做层级操作
+    if (vc.hdHideBottomBarWhenPushed) {
+        // 这里什么都不做
+        [self.tabBarManager.view bringSubviewToFront:vc.view];
+    }
     
     if (animation) {
         // 动画开始
-        [animation pushWithWillShowVC:vc currentVC:HDVCStack.shareInstance.visibleVC completion:^(BOOL finished) {
+        [animation pushWithWillShowVC:vc currentVC:self.visibleViewController completion:^(BOOL finished) {
             if (finished) {
-                HDVCStack.shareInstance.visibleVC =  vc;
+                [self.visibleViewController viewDidDisappear:true];
+                [vc viewDidAppear:true];
+                self.visibleViewController = vc;
                 // 手势禁用关闭
                 [[UIApplication sharedApplication] endIgnoringInteractionEvents];
             }
@@ -250,46 +120,184 @@ typedef void(^HDViewPanGestureBlock) (void);
     }
     else {
         // 手势禁用关闭
-        HDVCStack.shareInstance.visibleVC =  vc;
+        [self.visibleViewController viewDidDisappear:false];
+        [vc viewDidAppear:false];
+        self.visibleViewController = vc;
         [[UIApplication sharedApplication] endIgnoringInteractionEvents];
     }
     
 }
 
-+ (void)popWithAnimation:(NSObject<HDVCStackAnimationFunctions> *)animation {
-    if ([[HDVCStack shareInstance] vcArray].count > 0) {
-        [[[HDVCStack shareInstance] vcArray] removeLastObject];
-        UIViewController *willVisibleVC = [[HDVCStack shareInstance] vcArray].lastObject;
-        
+// 提取出一些公共方法，减少代码的行数
+- (void)popToVC:(UIViewController *)popToVC
+      animation:(NSObject<HDVCStackAnimationProtocol> *)animation
+  willDismissVC:(UIViewController *)willDismissVC {
+    [self popToVC:popToVC
+        animation:animation
+    willDismissVC:willDismissVC
+popCompleteHandle:nil];
+}
+
+- (void)popToVC:(UIViewController *)popToVC
+      animation:(NSObject<HDVCStackAnimationProtocol> *)animation
+  willDismissVC:(UIViewController *)willDismissVC
+popCompleteHandle:(void (^)(BOOL))popCompletion {
+    if (popToVC) {
+        // 基础引用链
+        willDismissVC.vcStack = nil;
         // 当前禁止任何手势
         [[UIApplication sharedApplication] beginIgnoringInteractionEvents];
-        if (willVisibleVC) {
-            if (animation) {
-                [willVisibleVC viewWillAppear:true];
-                [[HDVCStack shareInstance].visibleVC viewWillDisappear:true];
-                [willVisibleVC viewDidAppear:true];
-                [animation popWithWillShowVC:willVisibleVC currentVC:HDVCStack.shareInstance.visibleVC
-                                  completion:^(BOOL finished) {
-                                      [HDVCStack.shareInstance.visibleVC viewDidDisappear:true];
-                                      [HDVCStack.shareInstance.visibleVC.view removeFromSuperview];
-                                      HDVCStack.shareInstance.visibleVC = willVisibleVC;
+        if (animation) {
+            [popToVC viewWillAppear:true];
+            [willDismissVC viewWillDisappear:true];
+            [animation popWithWillShowVC:popToVC currentVC:willDismissVC
+                              completion:^(BOOL finished) {
+                                  if (finished) {
+                                      [willDismissVC.view removeFromSuperview];
+                                      [willDismissVC viewDidDisappear:true];
+                                      [popToVC viewDidAppear:true];
+                                      self.visibleViewController = popToVC;
                                       // 手势禁用关闭
                                       [[UIApplication sharedApplication] endIgnoringInteractionEvents];
-                                  }];
-            }
-            else {
-                [willVisibleVC viewWillAppear:false];
-                [HDVCStack.shareInstance.visibleVC viewWillDisappear:false];
-                [willVisibleVC viewDidAppear:false];
-                [HDVCStack.shareInstance.visibleVC viewDidDisappear:false];
-                [HDVCStack.shareInstance.visibleVC.view removeFromSuperview];
-                [HDVCStack.shareInstance.visibleVC viewDidDisappear:false];
-                HDVCStack.shareInstance.visibleVC = willVisibleVC;
-                // 手势禁用关闭
-                [[UIApplication sharedApplication] endIgnoringInteractionEvents];
+                                      // completion handle
+                                      if (popCompletion) {
+                                          popCompletion(finished);
+                                      }
+                                  }
+                              }];
+        }
+        else {
+            [popToVC viewWillAppear:false];
+            [willDismissVC viewWillDisappear:false];
+            [willDismissVC.view removeFromSuperview];
+            [willDismissVC viewDidDisappear:false];
+            [popToVC viewDidAppear:false];
+            self.visibleViewController = popToVC;
+            // 手势禁用关闭
+            [[UIApplication sharedApplication] endIgnoringInteractionEvents];
+            if (popCompletion) {
+                popCompletion(YES);
             }
         }
     }
+    else {
+        if (popCompletion) {
+            popCompletion(NO);
+        }
+    }
+}
+
+- (void)popWithAnimation:(NSObject<HDVCStackAnimationProtocol> *)animation {
+    if ([self viewControllers].count > 0) {
+        [[self viewControllers] removeLastObject];
+        UIViewController *willVisibleVC = [self viewControllers].lastObject;
+        
+        // 当前禁止任何手势
+        [self popToVC:willVisibleVC animation:animation willDismissVC:self.visibleViewController];
+    }
+}
+
+- (void)popToRootViewControllerWithAnimation:(NSObject<HDVCStackAnimationProtocol> *)animation {
+    if ([self viewControllers].count > 0) {
+        UIViewController *willVisibleVC = [self viewControllers].firstObject;
+        
+        // 将中间view全部删除
+        for (NSInteger i = self.viewControllers.count - 1; i > 0; i--) {
+            if (i == 0) {
+                break;
+            }
+            UIViewController *vc = self.viewControllers[i];
+            [vc viewWillDisappear:false];
+            [vc.view removeFromSuperview];
+            [vc viewDidDisappear:false];
+            [self.viewControllers removeObjectAtIndex:i];
+        }
+        
+        // 已出当前已经添加上的view
+        if (willVisibleVC) {
+            [willVisibleVC.view addSubview:self.visibleViewController.view];
+        }
+        
+        // 当前禁止任何手势
+        [self popToVC:willVisibleVC animation:animation willDismissVC:self.visibleViewController];
+    }
+}
+
+- (UIViewController *)vcByName:(NSString *)vcName {
+    if (self.viewControllers.count > 0) {
+        for (UIViewController *vc in self.viewControllers) {
+            if ([NSStringFromClass([vc class]) isEqualToString:vcName]) {
+                return vc;
+            }
+        }
+    }
+    return nil;
+}
+
+- (void)popToVCWithName:(NSString *)vcName
+              animation:(NSObject<HDVCStackAnimationProtocol> *)popAnimation {
+    if ([self vcByName:vcName]) {
+        [self popTo:[self vcByName:vcName] animation:popAnimation popCompleteHandle:nil];
+    }
+}
+
+- (void)popTo:(UIViewController *)vc
+    animation:(NSObject<HDVCStackAnimationProtocol> *)popAnimation
+popCompleteHandle:(void (^)(BOOL))popCompletion {
+    if (self.viewControllers.count > 0 &&
+        [self.viewControllers containsObject:vc]) {
+        UIViewController *willVisibleVC = vc;
+        
+        NSInteger willVisibleVCIndex = [self.viewControllers indexOfObject:vc];
+        
+        // 将中间view全部删除
+        for (NSInteger i = self.viewControllers.count - 1; i > 0; i--) {
+            if (i == willVisibleVCIndex) {
+                break;
+            }
+            UIViewController *vc = self.viewControllers[i];
+            [vc viewWillDisappear:false];
+            [vc.view removeFromSuperview];
+            [vc viewDidDisappear:false];
+            [self.viewControllers removeObjectAtIndex:i];
+        }
+        
+        // 已出当前已经添加上的view
+        if (willVisibleVC) {
+            [willVisibleVC.view addSubview:self.visibleViewController.view];
+        }
+        
+        // 当前禁止任何手势
+        [self popToVC:willVisibleVC animation:popAnimation willDismissVC:self.visibleViewController popCompleteHandle:popCompletion];
+    }
+    else {
+        if (popCompletion) {
+            popCompletion(NO);
+        }
+    }
+}
+
+- (void)popToVCWithName:(NSString *)popVCName
+              animation:(NSObject<HDVCStackAnimationProtocol> *)popAnimation
+             thenPushTo:(UIViewController *)pushVC
+              animation:(NSObject<HDVCStackAnimationProtocol> *)pushAnimation {
+    if ([self vcByName:popVCName]) {
+        [self popTo:[self vcByName:popVCName]
+          animation:popAnimation
+         thenPushTo:pushVC
+          animation:pushAnimation];
+    }
+}
+
+- (void)popTo:(UIViewController *)popVC
+    animation:(NSObject<HDVCStackAnimationProtocol> *)popAnimation
+   thenPushTo:(UIViewController *)pushVC
+    animation:(NSObject<HDVCStackAnimationProtocol> *)pushAnimation {
+    [self popTo:popVC animation:popAnimation popCompleteHandle:^(BOOL finished) {
+        if (finished) {
+            [self pushto:pushVC animation:pushAnimation];
+        }
+    }];
 }
 
 @end

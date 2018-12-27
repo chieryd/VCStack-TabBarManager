@@ -10,8 +10,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface HDModelAnimation : NSObject
-
+@interface HDModelAnimation : NSObject <HDVCStackAnimationProtocol>
++ (instancetype)defaultAnimation;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -7,10 +7,16 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "HDVCStack.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface UIViewController (HDVCStack)
+
+/**
+ VC对当前stack的快捷访问
+ */
+@property (nonatomic, strong, nullable) HDVCStack *vcStack;
 
 @end
 
